@@ -41,7 +41,7 @@ astBuilderExp s = case s of
         -> LApp  (astBuilderExp f) (astBuilderExp g ) (astBuilderTypes type_)
 
     List (Cell (Keyword Column) :  List (Cell( Keyword Lambda) : List (Cell (Keyword Column) : Cell (Id x) : t : [] ) : body : []): type_ : [] )
-        -> LExp (astBuilderExp body) (x,astBuilderTypes t) (astBuilderTypes type_)
+        -> LExp  (x,astBuilderTypes t) (astBuilderExp body) (astBuilderTypes type_)
 
   -- callpat =  List (f : g :[]) 
   -- lambdaPattern = List ( Keyword Lambda : List (Cell (Keyword Column) : Cell (Id x) : t : [] ) : body : [])
