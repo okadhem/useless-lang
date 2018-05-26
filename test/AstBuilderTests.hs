@@ -19,22 +19,23 @@ astBuilderType_spec = let parse' = fmap astBuilderTypes . parse sexp "test" in
 astBuilderExp_spec :: Spec
 astBuilderExp_spec = let
   parse' = fmap astBuilderExp . parse sexp "test" in do
+   describe "parsing and building Ast" $ do
+     it "" $
+       parse' "f" `shouldBe` Right  f 
 
-  it "trasforms (: f (-> * *)) to Var f (Arr Single Single)" $
-   parse' "(: f (-> * *))" `shouldBe` Right  f
+     it "" $
+       parse' "g" `shouldBe` Right g
 
-  it "transforms (: g *) to Var g Single" $
-    parse' "(: g *)" `shouldBe` Right g
+     it "" $
+       parse' "(f g)" `shouldBe` Right (LApp f g)
 
-  it "tranforms (: ((: f (-> * *)) (: g *)) *) to LApp f g ..." $
-    parse' "(: ( (: f (-> * *)) (: g *)) *)" `shouldBe` Right (LApp f g Single)
+     it "" $
+       parse' "(lambda (: x *) x)" `shouldBe` Right (
+         Lam ("x", Single) (Var "x") ) 
 
-  it "transforms (: (lambda ((: x *)) (: x *)) (-> * *))" $
-    parse' "(: (lambda (: x *) (: x *)) (-> * *))" `shouldBe` Right (
-    LExp ("x", Single) (Var "x" Single) (Arr Single Single)) 
-  it "transforms ((lambda x x) g) correctly"  $
-    parse' "(: ((: (lambda (: x *) (: x *)) (-> * *)) (: g *)) *)" `shouldBe`
-    Right (LApp (LExp ("x", Single) (Var "x" Single) (Arr Single Single)) g Single)
+     it "" $
+       parse' "((lambda (: x *) x) g)" `shouldBe`
+         Right (LApp (Lam ("x", Single) (Var "x") ) g)
    
-    where f = Var "f" (Arr Single Single)
-          g = Var "g" Single
+    where f = Var "f" 
+          g = Var "g"

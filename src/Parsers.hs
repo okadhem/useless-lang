@@ -34,14 +34,10 @@ astBuilderTypes s = case s of
   
 astBuilderExp :: Sexp -> Exp 
 astBuilderExp s = case s of
-    List (Cell (Keyword Column) : Cell (Id sym) : type_ : [] )
-        -> Var sym $ astBuilderTypes type_ 
+    Cell (Id sym) -> Var sym  
 
-    List (Cell (Keyword Column) : List (f : g :[]) : type_ : [] )
-        -> LApp  (astBuilderExp f) (astBuilderExp g ) (astBuilderTypes type_)
+    List (f : g :[]) -> LApp  (astBuilderExp f) (astBuilderExp g) 
 
-    List (Cell (Keyword Column) :  List (Cell( Keyword Lambda) : List (Cell (Keyword Column) : Cell (Id x) : t : [] ) : body : []): type_ : [] )
-        -> LExp  (x,astBuilderTypes t) (astBuilderExp body) (astBuilderTypes type_)
-
-  -- callpat =  List (f : g :[]) 
-  -- lambdaPattern = List ( Keyword Lambda : List (Cell (Keyword Column) : Cell (Id x) : t : [] ) : body : [])
+    List (Cell( Keyword Lambda) : List (Cell (Keyword Column) : Cell (Id x) : t : [] ) : body : [])
+        -> Lam (x,astBuilderTypes t) (astBuilderExp body) 
+    
