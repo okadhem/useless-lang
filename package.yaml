@@ -23,6 +23,8 @@ dependencies:
 - base >= 4.7 && < 5
 - parsers
 - parsec
+- containers
+- lens
 
 library:
   source-dirs: src
