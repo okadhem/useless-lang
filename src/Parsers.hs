@@ -30,11 +30,15 @@ astBuilderTypes :: Sexp -> TExp
 astBuilderTypes s = case s of
   List ((Cell (Id "->")) : a : b : []) ->  Arr (astBuilderTypes a) (astBuilderTypes b)
   Cell (Id "*") -> Single 
-
+  Cell (Id "Nat") -> Nat 
   
 astBuilderExp :: Sexp -> Exp 
 astBuilderExp s = case s of
+
+    Cell (Id "Zero") -> Zero
     Cell (Id sym) -> Var sym  
+
+    List (Cell ( Id "Succ") : e : []) -> Succ $ astBuilderExp e
 
     List (f : g :[]) -> LApp  (astBuilderExp f) (astBuilderExp g) 
 

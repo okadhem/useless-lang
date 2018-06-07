@@ -35,6 +35,14 @@ _ty = _Right . _2
 -- ------------------------------
 --       C  |- u v : s
 
+-- 
+------------------------
+--   C  |- Zero : nat
+
+-- C |- n : nat
+----------------------
+-- C |- Succ n : nat 
+
 
 typeCheck ::Ctx -> Exp -> Either TypeError (Derivation,TExp)
 typeCheck ctx (Lam (x , v) body) = let
@@ -79,6 +87,19 @@ typeCheck ctx (Var x)  = case lookfor (Var x) ctx of
     return (Node (HypotheticalTypingJudgement ctx e ty) [] ,ty)
   Nothing ->
     Left $ "failed to find type for " ++  show (Var x) ++ " in context"  
+
+typeCheck ctx (Succ e) = let
+  premise = typeCheck ctx e 
+  in
+    do
+      premise' <- premise
+      case premise' of
+        (der, ty) | ty == Nat ->
+           return $ (Node (HypotheticalTypingJudgement ctx (Succ e) ty) [der] ,Nat)
+        (_, ty') ->  Left $ "Expecting expression of type Nat but " ++ show e ++ " of type " ++ show ty'
+
+
+typeCheck ctx Zero = return $ (Node (HypotheticalTypingJudgement ctx Zero Nat) [] ,Nat)
 
 
 

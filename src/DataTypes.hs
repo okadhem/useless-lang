@@ -11,10 +11,12 @@ data Keyword = Lambda | Column deriving (Show,Eq)
 data Exp = Var Symbol
          | LApp Exp Exp
          | Lam (Symbol,TExp) Exp
+         | Zero
+         | Succ Exp
          deriving (Show,Eq)
      
 
-data TExp = Single | Arr TExp TExp deriving (Show,Eq)
+data TExp = Single | Arr TExp TExp | Nat deriving (Show,Eq)
 
 
 
