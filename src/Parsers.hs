@@ -12,7 +12,7 @@ separator :: Stream s Identity Char => Parsec s u Char
 separator = space <|> newline <|> tab
 
 atom :: Stream s Identity Char => Parsec s u Atom
-atom = f <$>  (many1 alphaNum <|> string ":" <|> string "*" <|> string "->")
+atom = f <$>  (many1 (alphaNum <|> char '_') <|> string ":" <|> string "*" <|> string "->")
   where f x = case x of
           "lambda" ->  (Keyword Lambda)
           ":" -> (Keyword Column)
@@ -39,6 +39,9 @@ astBuilderExp s = case s of
     Cell (Id sym) -> Var sym  
 
     List (Cell ( Id "Succ") : e : []) -> Succ $ astBuilderExp e
+
+    List (Cell (Id "rec_nat") : e0 : List (Cell (Id x) : Cell (Id y)  : e : []) : f : []) ->
+      Rec_Nat (astBuilderExp e0) x y (astBuilderExp e) (astBuilderExp f)
 
     List (f : g :[]) -> LApp  (astBuilderExp f) (astBuilderExp g) 
 

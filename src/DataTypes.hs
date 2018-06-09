@@ -13,6 +13,7 @@ data Exp = Var Symbol
          | Lam (Symbol,TExp) Exp
          | Zero
          | Succ Exp
+         | Rec_Nat Exp Symbol Symbol Exp Exp
          deriving (Show,Eq)
      
 

@@ -44,10 +44,15 @@ _ty = _Right . _2
 -- C |- Succ n : nat 
 
 
+-- C |- g : nat   C |- e0 : t   C,x:nat,y:t |- e : t
+------------------------------------------------------
+--        C |- (rec_nat e0 (x y e)) (g) : t
+
+
 typeCheck ::Ctx -> Exp -> Either TypeError (Derivation,TExp)
 typeCheck ctx (Lam (x , v) body) = let
   jud = TypingJudgement (Var x) v
-  premise =  typeCheck (extendContext jud ctx) body
+  premise =  typeCheck (extendContext [jud] ctx) body
   cons = do
     u <- fmap snd  premise
     return $ HypotheticalTypingJudgement ctx (Lam (x , v) body) (Arr v u)
@@ -103,6 +108,30 @@ typeCheck ctx Zero = return $ (Node (HypotheticalTypingJudgement ctx Zero Nat) [
 
 
 
+typeCheck ctx exp@(Rec_Nat e0 x y e g) = let
+  lpremise = typeCheck  ctx g
+  mpremise = typeCheck ctx e0
+  t = fmap snd mpremise
+  j1 = TypingJudgement (Var x) Nat
+  j2 = fmap (TypingJudgement (Var y)) t
+  rpremise = do
+    j2' <- j2
+    typeCheck (extendContext [j1 ,j2'] ctx) e    
+  in
+  do
+  rpremise' <- rpremise
+  lpremise' <- lpremise
+  mpremise' <- mpremise
+  t' <- t
+  if t' == snd rpremise' then
+      return  (Node (HypotheticalTypingJudgement ctx exp t')
+                (fmap fst [lpremise',mpremise',rpremise']),t')
+  else
+    Left $ "type missmatch recurser base case type and body type must be the same \n"
+           ++ "e is of type "
+           ++ show (snd rpremise') ++ " e0 is of type : " ++ show t
+    
+  
 
   
 
@@ -115,17 +144,15 @@ lookfor exp ((TypingJudgement e ty):ctx) = if e == exp then Just cons else lookf
  
 
 
-ppHypotheticalJudgement :: HypotheticalTypingJudgement -> String
-ppHypotheticalJudgement (HypotheticalTypingJudgement ctx exp ty) =
-  let
-   prettyCtx = foldl f "" (fmap ppTypingJudgement ctx)
-   f str tyStr = str ++ " " ++ tyStr
-  in
-    prettyCtx ++ " ⊢ " ++ ppTypingJudgement (TypingJudgement exp ty)
 
 
-extendContext :: TypingJudgement -> [TypingJudgement] -> [TypingJudgement]
-extendContext jud@(TypingJudgement e _ ) ctx = jud:(filter p ctx)
+
+extendContext :: [TypingJudgement] -> [TypingJudgement] -> [TypingJudgement]
+extendContext newjuds ctx = foldl f ctx newjuds
+  where f ctx jud = extendContext' jud ctx 
+
+extendContext' :: TypingJudgement -> [TypingJudgement] -> [TypingJudgement]
+extendContext' jud@(TypingJudgement e _ ) ctx = jud:(filter p ctx)
   where p (TypingJudgement e' _) = if e' == e then False else True 
 
 
@@ -133,6 +160,13 @@ extendContext jud@(TypingJudgement e _ ) ctx = jud:(filter p ctx)
 
 --pretty printing functions
 
+ppHypotheticalJudgement :: HypotheticalTypingJudgement -> String
+ppHypotheticalJudgement (HypotheticalTypingJudgement ctx exp ty) =
+  let
+   prettyCtx = foldl f "" (fmap ppTypingJudgement ctx)
+   f str tyStr = str ++ " " ++ tyStr
+  in
+    prettyCtx ++ " ⊢ " ++ ppTypingJudgement (TypingJudgement exp ty)
 ppTypingJudgement :: TypingJudgement -> String 
 ppTypingJudgement (TypingJudgement exp ty) =  show exp ++ " : " ++ show ty
 
