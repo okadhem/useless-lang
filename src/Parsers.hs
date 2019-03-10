@@ -11,40 +11,136 @@ import Data.Functor.Identity
 separator :: Stream s Identity Char => Parsec s u Char
 separator = space <|> newline <|> tab
 
-atom :: Stream s Identity Char => Parsec s u Atom
-atom = f <$>  (many1 (alphaNum <|> char '_') <|> string ":" <|> string "*" <|> string "->")
-  where f x = case x of
-          "lambda" ->  (Keyword Lambda)
-          ":" -> (Keyword Column)
-          str -> (Id str)
           
-sexp :: Stream s Identity Char => Parsec s u Sexp
-sexp = (fmap Cell atom) <|> do
-  char '('
-  many separator
-  x <- fmap List $  sexp `sepBy` many1 separator
-  char ')'
-  pure x 
 
-astBuilderTypes :: Sexp -> TExp
-astBuilderTypes s = case s of
-  List ((Cell (Id "->")) : a : b : []) ->  Arr (astBuilderTypes a) (astBuilderTypes b)
-  Cell (Id "*") -> Single 
-  Cell (Id "Nat") -> Nat 
-  
-astBuilderExp :: Sexp -> Exp 
-astBuilderExp s = case s of
+sep :: Stream s Identity Char => Parsec s u ()
+sep =  fmap (const ()) $ space <|> newline <|> tab   
 
-    Cell (Id "Zero") -> Zero
-    Cell (Id sym) -> Var sym  
+oParen :: Stream s Identity Char => Parsec s u ()
+oParen = do 
+    char '('
+    many sep
+    return ()
 
-    List (Cell ( Id "Succ") : e : []) -> Succ $ astBuilderExp e
+cParen :: Stream s Identity Char => Parsec s u ()
+cParen = do 
+    many sep
+    char ')'
+    return ()
 
-    List (Cell (Id "rec_nat") : e0 : List (Cell (Id x) : Cell (Id y)  : e : []) : f : []) ->
-      Rec_Nat (astBuilderExp e0) x y (astBuilderExp e) (astBuilderExp f)
+identifier :: Stream s Identity Char => Parsec s u String
+identifier = many1 $ alphaNum 
+    <|> char '_' <|> char '>' 
+    <|> char '<' <|> char '*'
+    <|> char '-' <|> char '/' 
+    <|> char '\\'
 
-    List (f : g :[]) -> LApp  (astBuilderExp f) (astBuilderExp g) 
 
-    List (Cell( Keyword Lambda) : List (Cell (Keyword Column) : Cell (Id x) : t : [] ) : body : [])
-        -> Lam (x,astBuilderTypes t) (astBuilderExp body) 
+variable :: Stream s Identity Char => Parsec s u Exp
+variable = Var <$> identifier
+
+
+application :: Stream s Identity Char => Parsec s u Exp
+application = do
+    oParen
+    f <- expression
+    many1 sep
+    g <- expression
+    cParen
+    return $ LApp f g
+
+
+lambda :: Stream s Identity Char => Parsec s u Exp
+lambda = do
+    oParen
+    string "lambda"
+    many1 sep
     
+    oParen
+    char ':'
+    many1 sep
+    x <- identifier
+    many1 sep
+    ty <- typeExpression
+    cParen 
+    
+    many sep
+    body <- expression
+    cParen
+    return $ Lam (x,ty) body 
+
+
+zero :: Stream s Identity Char => Parsec s u Exp
+zero = const Zero <$> string "Zero"
+
+
+succesor :: Stream s Identity Char => Parsec s u Exp
+succesor = do
+    oParen
+    string "Succ"
+    many1 sep
+    e <- expression
+    cParen  
+    return $ Succ e
+
+
+-- parses the like of this (rec_nat m (p fp (Succ fp)) val)
+rec_nat :: Stream s Identity Char => Parsec s u Exp
+rec_nat = do 
+    oParen
+    string "rec_nat"
+    many1 sep
+    zero_case <- expression
+    many1 sep
+
+    oParen
+    p <- identifier
+    many1 sep
+    fp <- identifier
+    many1 sep
+    succ_case <- expression
+    cParen
+
+    many1 sep 
+    val <- expression
+    cParen
+    return $ Rec_Nat zero_case p fp succ_case val
+
+    
+
+typeSingle :: Stream s Identity Char => Parsec s u TExp
+typeSingle = const Single <$> char '*'
+
+
+typeArr::Stream s Identity Char => Parsec s u TExp
+typeArr = do
+    oParen
+    string "->"
+    many1 sep
+    f <- typeExpression
+    many1 sep
+    g <- typeExpression
+    cParen 
+    return $ Arr f g
+
+
+typeNat :: Stream s Identity Char => Parsec s u TExp
+typeNat = const Nat <$> string "Nat"
+
+
+typeExpression :: Stream s Identity Char => Parsec s u TExp
+typeExpression = try typeNat <|> try typeSingle <|> try typeArr 
+
+
+expression :: Stream s Identity Char => Parsec s u Exp
+expression = try lambda <|> try rec_nat <|> try succesor <|> try zero <|> try variable <|> try application 
+
+
+parse :: String -> Either ParseError Exp   
+parse = Text.Parsec.parse expression ""
+
+
+parse' :: SourceName -> String -> Either ParseError Exp   
+parse' = Text.Parsec.parse expression 
+
+

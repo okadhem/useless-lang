@@ -1,12 +1,11 @@
 module REPL where
 import TypeChecker
 import Parsers
-import Text.Parsec
 
 
 eval :: String -> String
 eval e = let
-  expr =  fmap astBuilderExp . parse sexp "test" $ e 
+  expr =  parse e 
   tyder = fmap ( typeCheck [] ) expr
   in
   pprint' tyder 
