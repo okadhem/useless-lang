@@ -7,6 +7,7 @@ import DataTypes
 import Text.Parsec
 import Text.Parsec.Char
 import Data.Functor.Identity
+import Bound
 
 separator :: Stream s Identity Char => Parsec s u Char
 separator = space <|> newline <|> tab
@@ -36,21 +37,21 @@ identifier = many1 $ alphaNum
     <|> char '\\'
 
 
-variable :: Stream s Identity Char => Parsec s u Exp
+variable :: Stream s Identity Char => Parsec s u Exp'
 variable = Var <$> identifier
 
 
-application :: Stream s Identity Char => Parsec s u Exp
+application :: Stream s Identity Char => Parsec s u Exp'
 application = do
     oParen
     f <- expression
     many1 sep
     g <- expression
     cParen
-    return $ LApp f g
+    return $ App f g
 
 
-lambda :: Stream s Identity Char => Parsec s u Exp
+lambda :: Stream s Identity Char => Parsec s u Exp'
 lambda = do
     oParen
     string "lambda"
@@ -67,14 +68,14 @@ lambda = do
     many sep
     body <- expression
     cParen
-    return $ Lam (x,ty) body 
+    return $ Lam ty x $ abstract1 x body 
 
 
-zero :: Stream s Identity Char => Parsec s u Exp
+zero :: Stream s Identity Char => Parsec s u Exp'
 zero = const Zero <$> string "Zero"
 
 
-succesor :: Stream s Identity Char => Parsec s u Exp
+succesor :: Stream s Identity Char => Parsec s u Exp'
 succesor = do
     oParen
     string "Succ"
@@ -85,7 +86,7 @@ succesor = do
 
 
 -- parses the like of this (rec_nat m (p fp (Succ fp)) val)
-rec_nat :: Stream s Identity Char => Parsec s u Exp
+rec_nat :: Stream s Identity Char => Parsec s u Exp'
 rec_nat = do 
     oParen
     string "rec_nat"
@@ -104,8 +105,13 @@ rec_nat = do
     many1 sep 
     val <- expression
     cParen
-    return $ Rec_Nat zero_case p fp succ_case val
-
+    return $ Rec_Nat zero_case p fp (abstract2 p fp succ_case) val
+	where
+	abstract2 x y e = let select x = Just True
+			      select y = Just False
+			      select _ = Nothing
+			      in
+			      abstract select e
     
 
 typeSingle :: Stream s Identity Char => Parsec s u TExp
@@ -132,15 +138,15 @@ typeExpression :: Stream s Identity Char => Parsec s u TExp
 typeExpression = try typeNat <|> try typeSingle <|> try typeArr 
 
 
-expression :: Stream s Identity Char => Parsec s u Exp
+expression :: Stream s Identity Char => Parsec s u Exp'
 expression = try lambda <|> try rec_nat <|> try succesor <|> try zero <|> try variable <|> try application 
 
 
-parse :: String -> Either ParseError Exp   
+parse :: String -> Either ParseError Exp'   
 parse = Text.Parsec.parse expression ""
 
 
-parse' :: SourceName -> String -> Either ParseError Exp   
+parse' :: SourceName -> String -> Either ParseError Exp'   
 parse' = Text.Parsec.parse expression 
 
 

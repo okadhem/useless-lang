@@ -25,6 +25,8 @@ dependencies:
 - parsec
 - containers
 - lens
+- bound
+- deriving-compat
 
 library:
   source-dirs: src

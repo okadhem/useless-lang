@@ -1,5 +1,6 @@
-{ mkDerivation, base, containers, hpack, hspec, lens, parsec
-, parsers, QuickCheck, stdenv, tasty, tasty-hspec
+{ mkDerivation, base, bound, containers, deriving-compat, hpack
+, hspec, lens, parsec, parsers, QuickCheck, stdenv, tasty
+, tasty-hspec
 }:
 mkDerivation {
   pname = "useless-lang";
@@ -7,12 +8,16 @@ mkDerivation {
   src = ./.;
   isLibrary = true;
   isExecutable = true;
-  libraryHaskellDepends = [ base containers lens parsec parsers ];
+  libraryHaskellDepends = [
+    base bound containers deriving-compat lens parsec parsers
+  ];
   libraryToolDepends = [ hpack ];
-  executableHaskellDepends = [ base containers lens parsec parsers ];
+  executableHaskellDepends = [
+    base bound containers deriving-compat lens parsec parsers
+  ];
   testHaskellDepends = [
-    base containers hspec lens parsec parsers QuickCheck tasty
-    tasty-hspec
+    base bound containers deriving-compat hspec lens parsec parsers
+    QuickCheck tasty tasty-hspec
   ];
   preConfigure = "hpack";
   homepage = "https://github.com/githubuser/useless-lang#readme";
