@@ -9,19 +9,27 @@ import Data.Tree
 import Text.Parsec
 import Bound (fromScope , toScope, Var (..))
 
-data TypingJudgement  a = TypingJudgement (Exp a) TExp  deriving (Show,Functor)
+data TypingJudgement l a = TypingJudgement (Exp l a) TExp  deriving (Show,Functor)
 
-data HypotheticalTypingJudgement a = 
-    HypotheticalTypingJudgement [TypingJudgement a] (Exp a) TExp 
-    deriving (Show,Functor)
+--instance Functor TypingJudgement where
+--    fmap f (TypingJudgement e ty) = TypingJudgement (f <$> e) ty
+--instance Show l => Show (TypingJudgement a) where
+--    show (TypingJudgement e ty) = "TypingJudgement " ++ show e ++ " " ++ show ty
 
 
+data HypotheticalTypingJudgement l a  = 
+    HypotheticalTypingJudgement [TypingJudgement l a] (Exp l a) TExp deriving (Show,Functor)
 
-type Derivation = Tree (HypotheticalTypingJudgement Forall)
+--instance Functor HypotheticalTypingJudgement where
+--    fmap f (HypotheticalTypingJudgement ctx j ty) = HypotheticalTypingJudgement (fmap f <$> ctx) (f <$> j) ty
+--
+
+
+type Derivation l = Tree (HypotheticalTypingJudgement l Forall)
 
 type TypeError = String 
 
-type Ctx a = [TypingJudgement a]
+type Ctx l a = [TypingJudgement l a]
 
 
 
@@ -52,10 +60,10 @@ type Ctx a = [TypingJudgement a]
 --        C |- (rec_nat e0 (x y e)) (g) : t
 
 
-typeCheck :: (Show a,Eq a) => Ctx a -> Exp a -> Either TypeError (Derivation,TExp)
+typeCheck :: (Show a,Eq a,Show l) => Ctx l a -> Exp l a -> Either TypeError (Derivation l,TExp)
 typeCheck ctx exp@(Lam v _ body) = let
   hypothesis = TypingJudgement (Var $ B ()) v
-  premise =  typeCheck (liftExtend [hypothesis] ctx) (fromScope body)
+  premise = typeCheck (liftExtend [hypothesis] ctx) (fromScope $ withoutLoc body)
   u = snd <$> premise
   cons = (\u -> HypotheticalTypingJudgement ctx exp (Arr v u)) <$> u 
   in
@@ -69,8 +77,8 @@ typeCheck ctx exp@(Lam v _ body) = let
 
 
 typeCheck ctx (App f g) = let
-  lpremise = typeCheck ctx f
-  rpremise = typeCheck ctx g
+  lpremise = typeCheck ctx $ withoutLoc f
+  rpremise = typeCheck ctx $ withoutLoc g
   fCodomain = do
     g_ty <- snd <$> rpremise
     f_ty <- snd <$> lpremise
@@ -96,15 +104,15 @@ typeCheck ctx (App f g) = let
 
 
 
-typeCheck ctx (Var x)  = case lookfor (Var x) ctx of
+typeCheck ctx exp@(Var x)  = case lookfor (Var x) ctx of
   Just ty -> return (Node (E <$> HypotheticalTypingJudgement ctx (Var x) ty) [] ,ty)
-  Nothing -> Left $ "failed to find a type for " ++  show (Var x) ++ " in context"  
+  Nothing -> Left $ "failed to find a type for " ++  show exp ++ " in context"  
 
 
 
 
 typeCheck ctx (Succ e) = let
-  premise = typeCheck ctx e 
+  premise = typeCheck ctx $ withoutLoc e 
   in
     do
     (der,ty) <- premise
@@ -121,14 +129,14 @@ typeCheck ctx Zero = return (Node (E <$> HypotheticalTypingJudgement ctx Zero Na
 
 
 typeCheck ctx exp@(Rec_Nat e0 x y e g) = let
-  lpremise = typeCheck ctx g
-  mpremise = typeCheck ctx e0
+  lpremise = typeCheck ctx $ withoutLoc g
+  mpremise = typeCheck ctx $ withoutLoc e0
   t = snd <$> mpremise
   h1 = TypingJudgement (Var $ B True) Nat    -- x is represented by True
   h2 = TypingJudgement (Var $ B False) <$> t -- y is represented by False
   rpremise = do
     h2' <- h2
-    typeCheck (liftExtend [h1 ,h2'] ctx) $ fromScope e    
+    typeCheck (liftExtend [h1 ,h2'] ctx) $ fromScope $ withoutLoc e    
   in
   do
   rpremise' <- rpremise
@@ -156,20 +164,20 @@ instance Show Forall where
 
 -- utility functions
   
-lookfor :: Eq a => Exp a -> Ctx a -> Maybe TExp 
+lookfor :: Eq a => Exp l a -> Ctx l a -> Maybe TExp 
 lookfor exp [] = Nothing
 lookfor exp ((TypingJudgement e ty):ctx) = if e == exp then Just ty else lookfor exp ctx
 
 
 
 
-liftContext :: Ctx a -> Ctx (Bound.Var b a)
+liftContext :: Ctx l a -> Ctx l (Bound.Var b a)
 liftContext = fmap (fmap F)
 
 
 
 
-liftExtend :: Ctx (Bound.Var b a) -> Ctx a -> Ctx (Bound.Var b a)
+liftExtend :: Ctx l (Bound.Var b a) -> Ctx l a -> Ctx l (Bound.Var b a)
 liftExtend newjuds ctx =  newjuds ++ liftContext ctx 
 
 
@@ -177,7 +185,7 @@ liftExtend newjuds ctx =  newjuds ++ liftContext ctx
 
 --pretty printing functions
 
-ppHypotheticalJudgement :: Show a => HypotheticalTypingJudgement a -> String
+ppHypotheticalJudgement :: (Show l,Show a) => HypotheticalTypingJudgement l a -> String
 ppHypotheticalJudgement (HypotheticalTypingJudgement ctx exp ty) =
   let
    prettyCtx = foldl f "" (fmap ppTypingJudgement ctx)
@@ -186,15 +194,15 @@ ppHypotheticalJudgement (HypotheticalTypingJudgement ctx exp ty) =
     prettyCtx ++ " ⊢ " ++ ppTypingJudgement (TypingJudgement exp ty)
 
 
-ppTypingJudgement :: Show a => TypingJudgement a -> String 
+ppTypingJudgement :: (Show l,Show a) => TypingJudgement l a -> String 
 ppTypingJudgement (TypingJudgement exp ty) =  show exp ++ " : " ++ show ty
 
 
-ppDerivation :: Derivation -> String
+ppDerivation :: Show l => Derivation l -> String
 ppDerivation der = drawTree $ fmap ppHypotheticalJudgement der 
 
 
-pprint :: Either TypeError (Derivation,TExp) -> String
+pprint :: Show l => Either TypeError (Derivation l,TExp) -> String
 pprint (Left typeError) = typeError
 pprint (Right (der,ty)) =
   "Expression is of type :" ++ show ty ++ "\n" ++ ppDerivation der
@@ -202,7 +210,7 @@ pprint (Right (der,ty)) =
 
 
 -- veryy badd veryy badd !!!
-pprint' :: Either ParseError (Either TypeError (Derivation, TExp)) -> String
+pprint' :: Show l => Either ParseError (Either TypeError (Derivation l, TExp)) -> String
 pprint' (Left pe) = show pe
 pprint' (Right thing) = pprint thing
 
