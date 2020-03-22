@@ -1,7 +1,7 @@
 module REPL where
 import TypeChecker
 import Parsers
-
+import Output
 
 eval :: String -> String
 eval e = let

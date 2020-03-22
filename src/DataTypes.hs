@@ -21,7 +21,12 @@ data TExp =  Single
              | Nat
              deriving (Show,Eq)
 
-
+-- we have a *ton* of variables
+-- variable constractor Var for variables that appear in the syntax tree
+-- variable constuctor Var for variables that appear in the context, we need to print them
+--      when printing derivations
+-- bound variable appearing in lambdas and such, we also need to print them as part 
+-- of the exp
 data Exp l e = Var e
              | App (l,Exp l e) (l,Exp l e)
              | Lam TExp Name (l,Scope () (Exp l) e)

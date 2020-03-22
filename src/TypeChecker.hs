@@ -183,34 +183,3 @@ liftExtend newjuds ctx =  newjuds ++ liftContext ctx
 
 
 
---pretty printing functions
-
-ppHypotheticalJudgement :: (Show l,Show a) => HypotheticalTypingJudgement l a -> String
-ppHypotheticalJudgement (HypotheticalTypingJudgement ctx exp ty) =
-  let
-   prettyCtx = foldl f "" (fmap ppTypingJudgement ctx)
-   f str tyStr = str ++ " " ++ tyStr
-  in
-    prettyCtx ++ " ⊢ " ++ ppTypingJudgement (TypingJudgement exp ty)
-
-
-ppTypingJudgement :: (Show l,Show a) => TypingJudgement l a -> String 
-ppTypingJudgement (TypingJudgement exp ty) =  show exp ++ " : " ++ show ty
-
-
-ppDerivation :: Show l => Derivation l -> String
-ppDerivation der = drawTree $ fmap ppHypotheticalJudgement der 
-
-
-pprint :: Show l => Either TypeError (Derivation l,TExp) -> String
-pprint (Left typeError) = typeError
-pprint (Right (der,ty)) =
-  "Expression is of type :" ++ show ty ++ "\n" ++ ppDerivation der
-
-
-
--- veryy badd veryy badd !!!
-pprint' :: Show l => Either ParseError (Either TypeError (Derivation l, TExp)) -> String
-pprint' (Left pe) = show pe
-pprint' (Right thing) = pprint thing
-
