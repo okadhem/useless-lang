@@ -13,7 +13,6 @@ import Data.Functor.Classes
 
 
 
-type Symbol = String
 type Name = String
 
 data TExp =  Single

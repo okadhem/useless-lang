@@ -9,10 +9,14 @@ import Data.Tree
 import Bound 
 
 data OutputOpts = OutputOpts SourceLocInfoLevel VariableEncoding
-data SourceLocInfoLevel = TopLevelExp | FullExp 
+data SourceLocInfoLevel = TopLevelExp | None 
 data VariableEncoding = DeBrujin | OriginalName
 
 -- loc info is not showed
+outputExp :: OutputableVar a => VariableEncoding -> Exp l a -> String
+outputExp DeBrujin = outputExpDeBrujin
+outputExp OriginalName = outputExpOriginalNames . fmap outputVar
+
 outputExpDeBrujin :: OutputableVar a => Exp l a -> String
 outputExpDeBrujin e = case e of 
   Var x -> shrink $ outputVar x 
@@ -38,7 +42,7 @@ outputScopeDeBrujin :: (OutputableVar a, OutputableVar b) => Scope b (Exp l) a -
 outputScopeDeBrujin s = outputExpDeBrujin $ fromScope s 
 
 
-outputExpOriginalNames :: Exp l String -> String
+outputExpOriginalNames :: Exp l Name -> String
 outputExpOriginalNames e = case e of 
   Var x -> outputVar x 
   
@@ -59,8 +63,9 @@ outputExpOriginalNames e = case e of
     ++ "(" ++ pName ++ " " ++ fpName ++ ". " ++ outputScopeOriginalNames body binderMap ++ ") " 
     ++ outputExpOriginalNames val ++ ")"
 
-outputScopeOriginalNames ::  Scope b (Exp l) String -> (b -> String) -> String
+outputScopeOriginalNames ::  Scope b (Exp l) Name -> (b -> Name) -> String
 outputScopeOriginalNames s originalNames = outputExpOriginalNames $ instantiate (\b -> pure $ originalNames b) s   
+
 
 outputTExp :: TExp -> String
 outputTExp = show
@@ -73,7 +78,7 @@ instance (OutputableVar a, OutputableVar b) => OutputableVar (Var a b) where
     outputVar (B x) = "B" ++ outputVar x  
     outputVar (F x) = "F" ++ outputVar x
 
-instance OutputableVar String  where
+instance OutputableVar Name where
     outputVar x = x
 
 instance OutputableVar () where
@@ -96,6 +101,9 @@ ppHypotheticalJudgement (HypotheticalTypingJudgement ctx exp ty) =
 
 ppTypingJudgement :: (Show l,Show a) => TypingJudgement l a -> String 
 ppTypingJudgement (TypingJudgement exp ty) =  show exp ++ " : " ++ show ty
+
+outputTypingJudgement :: (Show l, OutputableVar a) => OutputOpts -> TypingJudgement l a -> String 
+outputTypingJudgement (OutputOpts locLevel enc) (TypingJudgement exp ty) = outputExp enc exp ++ " : " ++ outputTExp ty
 
 
 ppDerivation :: Show l => Derivation l -> String

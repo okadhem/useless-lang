@@ -11,7 +11,7 @@ import Bound
 
 type Location = (SourcePos,SourcePos) 
 
-type Exp' = Exp Location String  -- work in progress Exp datatype
+type Exp' = Exp Location Name -- work in progress Exp datatype
 
 located :: Stream s Identity Char => Parsec s u a -> Parsec s u (Location,a) 
 located p = do 
@@ -46,7 +46,7 @@ cParen = do
     char ')'
     return ()
 
-identifier :: Stream s Identity Char => Parsec s u String
+identifier :: Stream s Identity Char => Parsec s u Name
 identifier = many1 $ alphaNum 
     <|> char '_' <|> char '>' 
     <|> char '<' <|> char '*'
